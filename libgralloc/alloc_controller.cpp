@@ -95,8 +95,8 @@ sp<IAllocController> IAllocController::getInstance(bool useMasterHeap)
     return sController;
 }
 
-#ifdef USE_ION
 
+#ifdef USE_ION
 //-------------- IonController-----------------------//
 IonController::IonController()
 {
@@ -135,6 +135,9 @@ int IonController::allocate(alloc_data& data, int usage,
     if(usage & GRALLOC_USAGE_PROTECTED)
         ionFlags |= ION_SECURE;
 
+    if(usage & GRALLOC_USAGE_PRIVATE_DO_NOT_MAP)
+        data.allocType  =  private_handle_t::PRIV_FLAGS_NOT_MAPPED;
+
     // if no flags are set, default to
     // EBI heap, so that bypass can work
     // we can fall back to system heap if
@@ -144,6 +147,7 @@ int IonController::allocate(alloc_data& data, int usage,
 
     data.flags = ionFlags;
     ret = mIonAlloc->alloc_buffer(data);
+
     // Fallback
     if(ret < 0 && canFallback(compositionType,
                               usage,
@@ -159,8 +163,9 @@ int IonController::allocate(alloc_data& data, int usage,
         data.allocType = private_handle_t::PRIV_FLAGS_USES_ION;
         if(noncontig)
             data.allocType |= private_handle_t::PRIV_FLAGS_NONCONTIGUOUS_MEM;
+        if(ionFlags & ION_SECURE)
+            data.allocType |= private_handle_t::PRIV_FLAGS_SECURE_BUFFER;
     }
-
 
     return ret;
 }
@@ -176,6 +181,7 @@ sp<IMemAlloc> IonController::getAllocator(int flags)
 
     return memalloc;
 }
+
 #endif
 
 //-------------- PmemKernelController-----------------------//
